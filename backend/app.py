@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 import os
 
 app = Flask(__name__)
@@ -20,6 +21,7 @@ class Task(db.Model):
     completed = db.Column(db.Boolean, default=False)
     category = db.Column(db.String(50), default='General')
     priority = db.Column(db.String(10), default='Medium')
+    deadline = db.Column(db.Date, nullable=True)  # 期限日フィールド
 
     def to_dict(self):
         return {
@@ -27,7 +29,8 @@ class Task(db.Model):
             'title': self.title,
             'completed': self.completed,
             'category': self.category,
-            'priority': self.priority
+            'priority': self.priority,
+            'deadline': self.deadline.isoformat() if self.deadline else None
         }
 
 # データベース初期化
@@ -43,6 +46,7 @@ def get_tasks():
     category_filter = request.args.get('category', 'All')
     priority_filter = request.args.get('priority', 'All')
     status_filter = request.args.get('status', 'All')  # All, completed, incomplete
+    sort_by = request.args.get('sort', 'None')  # ソートパラメータ
 
     # ==================== タスクをクエリして取得 ====================
     # 基本的なクエリ（全タスクを取得）
@@ -64,6 +68,24 @@ def get_tasks():
         query = query.filter_by(completed=False)
     # status_filter == 'All' の場合はフィルターなし
 
+    # ==================== ソート条件を適用 ====================
+    if sort_by == 'deadline':
+        # 期限日でソート（NULL は最後、昇順）
+        query = query.order_by(Task.deadline.asc())
+    elif sort_by == 'priority':
+        # 優先度でソート (High → Medium → Low)
+        priority_order = {'High': 1, 'Medium': 2, 'Low': 3}
+        query = query.all()
+        # Python で優先度順にソート
+        query = sorted(query, key=lambda t: priority_order.get(t.priority, 4))
+        return jsonify([task.to_dict() for task in query])
+    elif sort_by == 'priority_deadline':
+        # 優先度と期限日でソート（優先度優先）
+        priority_order = {'High': 1, 'Medium': 2, 'Low': 3}
+        query = query.all()
+        query = sorted(query, key=lambda t: (priority_order.get(t.priority, 4), t.deadline or datetime.max.date()))
+        return jsonify([task.to_dict() for task in query])
+
     # ==================== フィルター済みのタスクを取得して返却 ====================
     # all() で全てのマッチしたタスクを取得
     tasks = query.all()
@@ -75,10 +97,19 @@ def get_tasks():
 @app.route('/api/tasks', methods=['POST'])
 def add_task():
     data = request.json
+    # deadline を日付に変換（文字列 YYYY-MM-DD 形式）
+    deadline = None
+    if data.get('deadline'):
+        try:
+            deadline = datetime.strptime(data.get('deadline'), '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            pass  # 無効な形式の場合は無視
+    
     task = Task(
         title=data.get('title'),
         category=data.get('category', 'General'),
-        priority=data.get('priority', 'Medium')
+        priority=data.get('priority', 'Medium'),
+        deadline=deadline
     )
     db.session.add(task)
     db.session.commit()

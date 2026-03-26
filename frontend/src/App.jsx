@@ -15,6 +15,9 @@ function App() {
   // priority: タスク作成時の優先度選択値
   const [priority, setPriority] = useState("Medium");
 
+  // deadline: タスク作成時の期限日選択値
+  const [deadline, setDeadline] = useState("");
+
   // ==================== フィルター用のState ====================
   // filterCategory: フィルター対象のカテゴリ（デフォルト: 'All' = フィルターなし）
   const [filterCategory, setFilterCategory] = useState("All");
@@ -24,6 +27,10 @@ function App() {
 
   // filterStatus: フィルター対象のステータス（'All', 'completed', 'incomplete'）
   const [filterStatus, setFilterStatus] = useState("All");
+
+  // ==================== ソート用のState ====================
+  // sortBy: ソート種類（'None', 'deadline', 'priority', 'priority_deadline'）
+  const [sortBy, setSortBy] = useState("None");
 
   // ==================== ページ読み込み時の処理 ====================
   useEffect(() => {
@@ -41,9 +48,10 @@ function App() {
       category: filterCategory,
       priority: filterPriority,
       status: filterStatus,
+      sort: sortBy,
     });
 
-    // バックエンドのGETエンドポイントからデータを取得（フィルター付き）
+    // バックエンドのGETエンドポイントからデータを取得（フィルター・ソート付き）
     const response = await fetch(`http://localhost:5000/api/tasks?${params}`);
     // JSONレスポンスを解析
     const data = await response.json();
@@ -52,10 +60,10 @@ function App() {
   };
 
   // フィルターが変更されたときにタスクを再取得する
-  // 依存関係: filterCategory, filterPriority, filterStatus が変わったら再実行
+  // 依存関係: filterCategory, filterPriority, filterStatus, sortBy が変わったら再実行
   useEffect(() => {
     fetchTasks();
-  }, [filterCategory, filterPriority, filterStatus]);
+  }, [filterCategory, filterPriority, filterStatus, sortBy]);
 
   // addTask: 新しいタスクをバックエンドに送信して追加
   const addTask = async () => {
@@ -67,11 +75,12 @@ function App() {
       method: "POST",
       // JSONデータとして送信することを指定
       headers: { "Content-Type": "application/json" },
-      // title, category, priority を含むオブジェクトを送信
+      // title, category, priority, deadline を含むオブジェクトを送信
       body: JSON.stringify({
         title: input,
         category: category,
         priority: priority,
+        deadline: deadline,
       }),
     });
 
@@ -83,6 +92,8 @@ function App() {
 
     // 入力欄をクリア（次のタスク入力に備える）
     setInput("");
+    // 期限日もクリア
+    setDeadline("");
   };
 
   // deleteTask: タスクをバックエンドから削除
@@ -118,6 +129,7 @@ function App() {
     setFilterCategory("All"); // カテゴリを 'All' にリセット
     setFilterPriority("All"); // 優先度を 'All' にリセット
     setFilterStatus("All"); // ステータスを 'All' にリセット
+    setSortBy("None"); // ソートを 'None' にリセット
     // useEffect が自動的に fetchTasks() を呼び出してくれるので、
     // フィルター後のタスク一覧が自動で更新される
   };
@@ -152,6 +164,14 @@ function App() {
           placeholder="新しいタスク..."
         />
 
+        {/* 期限日入力: タスクの期限日を選択 */}
+        <input
+          type="date"
+          value={deadline}
+          onChange={(e) => setDeadline(e.target.value)}
+          title="期限日を選択"
+        />
+
         {/* カテゴリセレクト: タスク作成時のカテゴリ選択 */}
         <select value={category} onChange={(e) => setCategory(e.target.value)}>
           <option>General</option>
@@ -173,7 +193,7 @@ function App() {
 
       {/* ==================== フィルターUI ====================  */}
       <div className="filter-container">
-        <h3>フィルター</h3>
+        <h3>フィルター & ソート</h3>
 
         {/* カテゴリフィルター */}
         <div className="filter-group">
@@ -217,6 +237,17 @@ function App() {
           </select>
         </div>
 
+        {/* ソートセレクター */}
+        <div className="filter-group">
+          <label>ソート:</label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="None">ソートなし</option>
+            <option value="deadline">期限日でソート</option>
+            <option value="priority">優先度でソート</option>
+            <option value="priority_deadline">優先度 → 期限日でソート</option>
+          </select>
+        </div>
+
         {/* ==================== リセットボタン ==================== */}
         {/* 
           フィルターをリセットするボタン
@@ -224,7 +255,7 @@ function App() {
           全てのフィルター条件が初期状態（'All'）に戻される
         */}
         <button className="reset-button" onClick={resetFilters}>
-          フィルターをリセット
+          フィルター & ソートをリセット
         </button>
       </div>
 
@@ -262,6 +293,11 @@ function App() {
                   >
                     {task.priority}
                   </span>
+
+                  {/* 期限日バッジ: 期限日がある場合のみ表示 */}
+                  {task.deadline && (
+                    <span className="deadline">📅 {task.deadline}</span>
+                  )}
                 </div>
               </div>
 

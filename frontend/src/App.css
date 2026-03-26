@@ -30,6 +30,16 @@ h1 {
   font-size: 14px;
 }
 
+/* 日付入力欄 */
+.input-container input[type="date"] {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #f9f9f9;
+}
+
 /* セレクトボックス（カテゴリ・優先度） */
 .input-container select {
   flex: 1; /* テキスト入力欄より狭い */
@@ -236,6 +246,16 @@ h1 {
   border-radius: 3px;
   font-weight: bold;
   /* 背景色はApp.jsxのgetPriorityColor関数で動的に設定される */
+}
+
+/* 期限日バッジ */
+.task-meta .deadline {
+  background-color: #fff3cd; /* 薄い黄色 */
+  color: #856404; /* 濃い茶色 */
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-weight: bold;
+  font-size: 12px;
 }
 
 /* ==================== 削除ボタン ==================== */
